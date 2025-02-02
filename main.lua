@@ -2,18 +2,44 @@ if arg[2] == "debug" then
     require("lldebugger").start()
 end
 
--- random variables and objects
-time = love.timer.getTime()
-moveTimer = 0
+-- main settings and objects
+grid = 11
+mainWorld = love.physics.newWorld (0, 0, false)
+-- player
+charA = love.physics.newBody(mainWorld, grid*5, grid*5, "dynamic")
 -- set window size
 success = love.window.setMode (250, 250, {resizable=true})
-love.graphics.scale(10, 10)
-gridSize = 11
-mainWorld = love.physics.newWorld (0, 0, false)
-charA = love.physics.newBody(mainWorld, gridSize*5, gridSize*5, "dynamic")
-moveTimeStamp = love.timer.getTime()
+
+
+-- random variables and objects
+
+-- create bumpmap for collision detection
 bumpMap = {}
 bumpMapIterator = 0
+
+-- inserte testbumps
+-- table.insert(bumpMap, {X=5*grid, Y=5*grid})
+
+time = love.timer.getTime()
+moveTimer = 0
+-- no idea if this does anything
+-- love.graphics.scale(10, 10)
+moveTimeStamp = love.timer.getTime()
+-- load stepsound
+stepSound = love.audio.newSource("step.wav", "static")
+
+-- detect if table contains specific XY coordinates; ChatGPT's code
+function containsXY(tbl, xValue, yValue)
+    for _, obj in ipairs(tbl) do
+    --for i=0,1000 do
+        --if tbl.obj.X == xValue and tbl.obj.Y == yValue then
+        --if tbl[i].X == xValue and tbl[i].Y == yValue then
+        if obj.X == xValue and obj.Y == yValue then
+            return true
+        end
+    end
+    return false
+end
 
 -- read, parse and print prefabs
 prefabPrinter = function (p, x, y)    
@@ -38,15 +64,17 @@ prefabPrinter = function (p, x, y)
         -- print each character from the table individually
         for counter = 0, #currentPrefabTable do
             -- mark the current XY position on the bumpmap
-            bumpMap.bumpMapIterator = drawX, drawY
+            bumpMap.bumpMapIterator = {drawX, drawY}
             bumpMapIterator = bumpMapIterator+1
+            -- line break
             if currentPrefabTable[counter] == "\n"
                 then
-                    drawY = drawY+gridSize
+                    drawY = drawY+grid
                     drawX = x
                 end
             love.graphics.print(currentPrefabTable[counter], drawX, drawY)
-            drawX = drawX+gridSize
+            table.insert(bumpMap, {X=drawX, Y=drawY})
+            drawX = drawX+grid
             counter = counter+1
         end
         counter = 0
@@ -70,42 +98,77 @@ function love.draw()
 --    love.graphics.print("_", 245, 245)
 --    love.graphics.print("_", 260, 260)
 --    prefabPrinter("prefab1.lua", 10, 200)
---    prefabPrinter("SEH.lua", gridSize*10, gridSize*10)
--- Calculate the camera offset
-    local windowWidth, windowHeight = love.graphics.getDimensions()
-    local offsetX = windowWidth / 2 - charA:getX()
-    local offsetY = windowHeight / 2 - charA:getY()
+--    prefabPrinter("SEH.lua", grid*10, grid*10)
+
+    -- Calculate the camera offset
+    -- local windowWidth, windowHeight = love.graphics.getDimensions()
+    -- local offsetX = windowWidth / 2 - charA:getX()
+    -- local offsetY = windowHeight / 2 - charA:getY()
 
     -- Apply the camera translation
-    love.graphics.push()
-    love.graphics.translate(offsetX, offsetY)
+    -- love.graphics.push()
+    -- love.graphics.translate(offsetX, offsetY)
 
     -- Draw the scene
     love.graphics.print("A", charA:getX(), charA:getY())
-    prefabPrinter("wideRoom.lua", gridSize * 0, gridSize * 0)
+    -- prefabPrinter("wideRoom.lua", grid * 0, grid * 0)
+    prefabPrinter("prefab1.lua", grid * 12, grid * 7)
+
+    -- draw Kramnik
+    kramnikSmall = love.graphics.newImage("kramnikSmall.jpg")
+    love.graphics.draw(kramnikSmall, grid * 25, grid * 15)
+
+    -- draw coordinates function
+function coDraw(x, y)
+    love.graphics.print({x,".",y}, grid*x, grid*y, 0, 0.5, 0.5)
+end
+    -- specify coordinates to draw
+for i = 0, 100 do
+    coDraw (i, i)
+    coDraw (i, 0)
+    coDraw (0, i)
+end
+
+    -- draw coordinate indicators
+
+    love.graphics.print("20.20", grid*20, grid*20)
+
+--    love.graphics.print(bumpMap, 0, 0)
 
     -- Reset the translation
-    love.graphics.pop()
+    -- love.graphics.pop()
 end
 
 -- movement
 function love.update()
     if love.timer.getTime() > moveTimeStamp+0.3 then
         if love.keyboard.isDown("right") then
-            charA:setX(charA:getX() + gridSize)
-            moveTimeStamp = love.timer.getTime()
+            if not containsXY(bumpMap, charA:getX() + grid, charA:getY()) then
+                charA:setX(charA:getX() + grid)
+                love.audio.play(stepSound)
+                moveTimeStamp = love.timer.getTime()
+            end
         end
         if love.keyboard.isDown("left") then
-            charA:setX(charA:getX() - gridSize)
-            moveTimeStamp = love.timer.getTime()
+            if not containsXY(bumpMap, charA:getX() - grid, charA:getY()) then
+                charA:setX(charA:getX() - grid)
+                love.audio.play(stepSound)
+                moveTimeStamp = love.timer.getTime()
+            end
         end
         if love.keyboard.isDown("up") then
-            charA:setY(charA:getY() - gridSize)
-            moveTimeStamp = love.timer.getTime()
+            if not containsXY(bumpMap, charA:getX(), charA:getY() - grid) then
+                charA:setY(charA:getY() - grid)
+                love.audio.play(stepSound)
+                moveTimeStamp = love.timer.getTime()
+            end
         end
         if love.keyboard.isDown("down") then
-            charA:setY(charA:getY() + gridSize)
-            moveTimeStamp = love.timer.getTime()
+            if not containsXY(bumpMap, charA:getX(), charA:getY() + grid) then
+                charA:setY(charA:getY() + grid)
+                love.audio.play(stepSound)
+                moveTimeStamp = love.timer.getTime()
         end
     end
+end
 end
