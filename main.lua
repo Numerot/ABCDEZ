@@ -41,6 +41,15 @@ function containsXY(tbl, xValue, yValue)
     return false
 end
 
+function canMoveTo(x, y)
+    for _, obj in ipairs(bumpMap) do
+        if obj.X == x and obj.Y == y and obj.Char~=" " then
+            return false
+        end
+    end
+    return true
+end
+
 -- read, parse and print prefabs
 prefabPrinter = function (p, x, y)    
     local a = love.filesystem.newFile(p)
@@ -73,7 +82,7 @@ prefabPrinter = function (p, x, y)
                     drawX = x
                 end
             love.graphics.print(currentPrefabTable[counter], drawX, drawY)
-            table.insert(bumpMap, {X=drawX, Y=drawY})
+            table.insert(bumpMap, {X=drawX, Y=drawY, Char=currentPrefabTable[counter]})
             drawX = drawX+grid
             counter = counter+1
         end
@@ -111,12 +120,12 @@ function love.draw()
 
     -- Draw the scene
     love.graphics.print("A", charA:getX(), charA:getY())
-    -- prefabPrinter("wideRoom.lua", grid * 0, grid * 0)
-    prefabPrinter("prefab1.lua", grid * 12, grid * 7)
+    prefabPrinter("wideRoom.lua", grid * 0, grid * 0)
+    --prefabPrinter("prefab1.lua", grid * 12, grid * 7)
 
     -- draw Kramnik
-    kramnikSmall = love.graphics.newImage("kramnikSmall.jpg")
-    love.graphics.draw(kramnikSmall, grid * 25, grid * 15)
+    --kramnikSmall = love.graphics.newImage("kramnikSmall.jpg")
+    --love.graphics.draw(kramnikSmall, grid * 25, grid * 15)
 
     -- draw coordinates function
 function coDraw(x, y)
@@ -124,9 +133,9 @@ function coDraw(x, y)
 end
     -- specify coordinates to draw
 for i = 0, 100 do
-    coDraw (i, i)
-    coDraw (i, 0)
-    coDraw (0, i)
+    --coDraw (i, i)
+    --coDraw (i, 0)
+    --coDraw (0, i)
 end
 
     -- draw coordinate indicators
@@ -143,28 +152,28 @@ end
 function love.update()
     if love.timer.getTime() > moveTimeStamp+0.3 then
         if love.keyboard.isDown("right") then
-            if not containsXY(bumpMap, charA:getX() + grid, charA:getY()) then
+            if canMoveTo(charA:getX() + grid, charA:getY()) then
                 charA:setX(charA:getX() + grid)
                 love.audio.play(stepSound)
                 moveTimeStamp = love.timer.getTime()
             end
         end
         if love.keyboard.isDown("left") then
-            if not containsXY(bumpMap, charA:getX() - grid, charA:getY()) then
+            if canMoveTo(charA:getX() - grid, charA:getY()) then
                 charA:setX(charA:getX() - grid)
                 love.audio.play(stepSound)
                 moveTimeStamp = love.timer.getTime()
             end
         end
         if love.keyboard.isDown("up") then
-            if not containsXY(bumpMap, charA:getX(), charA:getY() - grid) then
+            if canMoveTo(charA:getX(), charA:getY() - grid) then
                 charA:setY(charA:getY() - grid)
                 love.audio.play(stepSound)
                 moveTimeStamp = love.timer.getTime()
             end
         end
         if love.keyboard.isDown("down") then
-            if not containsXY(bumpMap, charA:getX(), charA:getY() + grid) then
+            if canMoveTo(charA:getX(), charA:getY() + grid) then
                 charA:setY(charA:getY() + grid)
                 love.audio.play(stepSound)
                 moveTimeStamp = love.timer.getTime()
