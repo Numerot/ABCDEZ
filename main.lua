@@ -34,6 +34,15 @@ function containsXY(tbl, xValue, yValue)
     return false
 end
 
+function canMoveTo(x, y)
+    for _, obj in ipairs(bumpMap) do
+        if obj.X == x and obj.Y == y and obj.Char~=" " then
+            return false
+        end
+    end
+    return true
+end
+
 -- read, parse and print prefabs
 function prefabPrinter(p, x, y)    
     local a = love.filesystem.newFile(p)
@@ -67,7 +76,7 @@ function prefabPrinter(p, x, y)
                 end
             love.graphics.print(currentPrefabTable[counter], drawX, drawY)
             --if not currentPrefabTable[counter] == (" ") then
-                table.insert(bumpMap, {X=drawX, Y=drawY})
+                table.insert(bumpMap, {X=drawX, Y=drawY, Char=currentPrefabTable[counter]})
             --end
             drawX = drawX+grid
             counter = counter+1
@@ -133,28 +142,28 @@ end
 function love.update()
     if love.timer.getTime() > moveTimeStamp+0.3 then
         if love.keyboard.isDown("right") then
-            if not containsXY(bumpMap, charA:getX() + grid, charA:getY()) then
+            if canMoveTo(charA:getX() + grid, charA:getY()) then
                 charA:setX(charA:getX() + grid)
                 love.audio.play(stepSound)
                 moveTimeStamp = love.timer.getTime()
             end
         end
         if love.keyboard.isDown("left") then
-            if not containsXY(bumpMap, charA:getX() - grid, charA:getY()) then
+            if canMoveTo(charA:getX() - grid, charA:getY()) then
                 charA:setX(charA:getX() - grid)
                 love.audio.play(stepSound)
                 moveTimeStamp = love.timer.getTime()
             end
         end
         if love.keyboard.isDown("up") then
-            if not containsXY(bumpMap, charA:getX(), charA:getY() - grid) then
+            if canMoveTo(charA:getX(), charA:getY() - grid) then
                 charA:setY(charA:getY() - grid)
                 love.audio.play(stepSound)
                 moveTimeStamp = love.timer.getTime()
             end
         end
         if love.keyboard.isDown("down") then
-            if not containsXY(bumpMap, charA:getX(), charA:getY() + grid) then
+            if canMoveTo(charA:getX(), charA:getY() + grid) then
                 charA:setY(charA:getY() + grid)
                 love.audio.play(stepSound)
                 moveTimeStamp = love.timer.getTime()
