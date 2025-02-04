@@ -21,14 +21,38 @@ MoveTimeStamp = love.timer.getTime()
 DialogueTimeStamp = love.timer.getTime()
 StepSound = love.audio.newSource("step.wav", "static")
 ScreenWidth, ScreenHeight = love.graphics.getWidth(), love.graphics.getHeight()
+-- UI stuff
+UIList = {}
+table.insert(UIList, "INSPECT")
+table.insert(UIList, "USE")
+table.insert(UIList, "TALK")
+table.insert(UIList, "TAKE")
+table.insert(UIList, "BREAK")
+table.insert(UIList, "LISTEN")
+
 -- dialogue stuff
 CurrentDialogue = "Nothing special to comment on in the environment."
 DialogueTree = love.filesystem.newFile("DialogueTree.lua")
 DialogueTree:open("r")
---dialogueList {}
+DialogueTree = love.filesystem.read("DialogueTree.lua")
+DialogueIndex = 1
+
+function LineSplitter(s)
+    local lines = {}
+    local i = 1
+    s:gsub("([^\r\n]+)", function(line)
+        table.insert(lines, line)
+    end)
+    return lines
+end
+
+DialogueList = LineSplitter(DialogueTree)
+CurrentDialogueList = DialogueList
+
+--for w in DialogueTree:gmatch("([^;]*)") do table.insert(DialogueList, w) end
 --for i=0, #TbsLength do
-    
---end
+
+--string.sub()
 
 -- create dialogue canvas
 DialogueCanvas = love.graphics.newCanvas(ScreenWidth, ScreenHeight/3)
@@ -36,14 +60,14 @@ DialogueCanvas = love.graphics.newCanvas(ScreenWidth, ScreenHeight/3)
 UICanvas = love.graphics.newCanvas(ScreenWidth/3, ScreenHeight)
 
     -- draw coordinates function
-    function coDraw(x, y)
+    function CoDraw(x, y)
         love.graphics.print({x,".",y}, Grid*x, Grid*y, 0, 0.5, 0.5)
     end
     -- specify coordinates to draw
     for i = 0, 100 do
-        coDraw (i, i)
-        coDraw (i, 0)
-        coDraw (0, i)
+        CoDraw (i, i)
+        CoDraw (i, 0)
+        CoDraw (0, i)
     end
 
 -- detect if table contains specific XY coordinates; ChatGPT's code
@@ -70,6 +94,7 @@ end
 
 -- read, parse and print prefabs
 function PrefabPrinter(p, x, y)    
+    -- open the file and and store it as a string in the s variable
     local a = love.filesystem.newFile(p)
     a:open("r")
     local s = love.filesystem.read(p)
@@ -77,12 +102,12 @@ function PrefabPrinter(p, x, y)
     function StringSplitter(toBeSplit)    
         TbsLength = string.len(toBeSplit)
         local counter = 0
-        currentPrefabTable = {}
-        -- stores the CharActers into a table; somewhere around here it craps out because it doesn't 
+        local currentPrefabTable = {}
+        -- stores the characters into a table; somewhere around here it craps out because it doesn't 
         -- understand spaces from ASCII art made in REXpaint
         for counter = 0, TbsLength do
-            currentSymbol = string.sub(toBeSplit, counter, counter)
-            currentPrefabTable[counter] = currentSymbol
+            CurrentSymbol = string.sub(toBeSplit, counter, counter)
+            currentPrefabTable[counter] = CurrentSymbol
             counter = counter+1
         end
         local drawX = x
@@ -144,16 +169,16 @@ function love.draw()
     PrefabPrinter("borderD.lua", 0, ScreenHeight*2/3)
     PrefabPrinter("borderDVert.lua", 0, 0)
     PrefabPrinter("borderDVert.lua", ScreenWidth*2/3-Grid, 0)
-    love.graphics.print(CurrentDialogue, ScreenWidth/3, ScreenHeight*1/6)
-    -- prefabPrinter could be used to print dialogue, 
-    -- but needs to be somehow modified to only print the current line
-    --PrefabPrinter("DialogueTree.lua", ScreenWidth/3, ScreenHeight*1/6)  
+    for i = 1, #UIList do
+        love.graphics.print(UIList[i], Grid*3, Grid*(2+i))
+    end
+
     love.graphics.setCanvas()
-    -- Draw the UI Canvas on the screen; sets the positioning, not size
+    -- draw the UI Canvas on the screen; sets the positioning, not size
     love.graphics.draw(UICanvas, ScreenWidth*0.7, 0)
 
 
-    -- draw the dialogue box
+    -- draw the dialogue canvas
     love.graphics.setCanvas(DialogueCanvas)
     love.graphics.clear(0, 0, 0, 0) -- clear previous frame
     love.graphics.setColor(0, 0, 0, 0.95)
@@ -163,13 +188,13 @@ function love.draw()
     PrefabPrinter("borderD.lua", 0, DialogueCanvas:getHeight()-10)
     PrefabPrinter("borderDVert.lua", 0, 0)
     PrefabPrinter("borderDVert.lua", ScreenWidth-2*Grid, 0)
-    love.graphics.print(CurrentDialogue, ScreenWidth/3, ScreenHeight*1/6)
+    love.graphics.print(CurrentDialogue, Grid*2, ScreenHeight*1/6)
     -- prefabPrinter could be used to print dialogue, 
     -- but needs to be somehow modified to only print the current line
     --PrefabPrinter("DialogueTree.lua", ScreenWidth/3, ScreenHeight*1/6)  
     love.graphics.setCanvas()
     
-    -- Draw the dialogue canvas on the screen
+    -- draw the dialogue canvas on the screen
     love.graphics.draw(DialogueCanvas, 0, ScreenHeight*2/3)
 end
 
@@ -206,7 +231,11 @@ function love.update()
         end
         if love.timer.getTime() > DialogueTimeStamp+DialogueDelay then
             if love.keyboard.isDown("space") then
-                CurrentDialogue = "You pressed space."
+                if DialogueIndex == #CurrentDialogueList then
+                    DialogueIndex = 0
+                end
+                DialogueIndex = DialogueIndex+1
+                CurrentDialogue = CurrentDialogueList[DialogueIndex]
                 DialogueTimeStamp = love.timer.getTime()
             end
         end
