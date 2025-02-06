@@ -34,11 +34,22 @@ table.insert(UIList, "LISTEN")
 RoomList = {}
 table.insert(RoomList, "Aroom.lua")
 table.insert(RoomList, "Hallway1.lua")
-table.insert(RoomList, "wideRoom.lua")
-table.insert(RoomList, "Aroom.lua")
+table.insert(RoomList, "HallwayZ.lua")
+
+CurrentRoom = 1
+
+function ChangeRoom (x, y, ax, ay)
+    BumpMap = {}
+    PrefabPrinter(CurrentRoom, Grid*x, Grid*y)
+    CharA:setX(Grid*ax)
+    CharA:setX(Grid*ay)
+end
 
 Hallway1 = love.filesystem.newFile("Hallway1.lua")
 Hallway1:open("r")
+
+HallwayZ = love.filesystem.newFile("HallwayZ")
+HallwayZ:open("r")
 
 --for i=0, #RoomList do
 --    DialogueTree = love.filesystem.newFile("DialogueTree.lua")
@@ -257,10 +268,11 @@ function love.update()
         end
         if love.keyboard.isDown("up") then
             if MoveToNextRoom(CharA:getX(), CharA:getY() - Grid) == true then
-                RoomListCounter = 2
+                RoomListCounter = RoomListCounter+1
                 CharA:setX(Grid*12)
                 CharA:setY(Grid*20)
                 CurrentRoom = RoomList[RoomListCounter]
+                ChangeRoom(7, 7, 15, 15)
             end
             if CanMoveTo(CharA:getX(), CharA:getY() - Grid) then
                 CharA:setY(CharA:getY() - Grid)
@@ -288,12 +300,13 @@ function love.update()
         -- test RoomList; currently uses DialogueTimeStamp because I'm lazy
         if love.timer.getTime() > DialogueTimeStamp+DialogueDelay then
             if love.keyboard.isDown("n") then do
-                CurrentRoom = RoomList[RoomListCounter]
-                RoomListCounter = RoomListCounter+1
-                if RoomListCounter == #RoomList then
+                if RoomListCounter == #RoomList+1 then
                     CurrentRoom = RoomList[1]
                     RoomListCounter = 1
                 end
+                CurrentRoom = RoomList[RoomListCounter]
+                RoomListCounter = RoomListCounter+1
+                ChangeRoom(7, 7, 15, 15)
             end
             DialogueTimeStamp = love.timer.getTime()
         end
