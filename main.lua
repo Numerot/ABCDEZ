@@ -6,7 +6,7 @@ end
 Grid = 11
 MainWorld = love.physics.newWorld (0, 0, false)
 -- create player object
-CharA = love.physics.newBody(MainWorld, Grid*3, Grid*2, "dynamic")
+CharA = love.physics.newBody(MainWorld, Grid*17, Grid*17, "dynamic")
 -- set window size; resizable, but UI elements may break
 Success = love.window.setMode (500, 500, {resizable=true})
 -- create BumpMap for collision detection
@@ -30,6 +30,24 @@ table.insert(UIList, "TAKE")
 table.insert(UIList, "BREAK")
 table.insert(UIList, "LISTEN")
 
+-- create room playlist
+RoomList = {}
+table.insert(RoomList, "Aroom.lua")
+table.insert(RoomList, "Hallway1.lua")
+table.insert(RoomList, "wideRoom.lua")
+table.insert(RoomList, "Aroom.lua")
+
+Hallway1 = love.filesystem.newFile("Hallway1.lua")
+Hallway1:open("r")
+
+--for i=0, #RoomList do
+--    DialogueTree = love.filesystem.newFile("DialogueTree.lua")
+--    DialogueTree:open("r")
+--end
+
+CurrentRoom = RoomList[1]
+RoomListCounter = 1
+
 -- dialogue stuff
 CurrentDialogue = "Nothing special to comment on in the environment."
 DialogueTree = love.filesystem.newFile("DialogueTree.lua")
@@ -52,7 +70,8 @@ CurrentDialogueList = DialogueList
 --for w in DialogueTree:gmatch("([^;]*)") do table.insert(DialogueList, w) end
 --for i=0, #TbsLength do
 
---string.sub()
+-- create map canvas
+MapCanvas = love.graphics.newCanvas(ScreenWidth*2/3, ScreenHeight*2/3)
 
 -- create dialogue canvas
 DialogueCanvas = love.graphics.newCanvas(ScreenWidth, ScreenHeight/3)
@@ -90,6 +109,15 @@ function CanMoveTo(x, y)
         end
     end
     return true
+end
+
+function MoveToNextRoom (x, y)
+    for _, obj in ipairs(BumpMap) do
+        if obj.X == x and obj.Y == y and obj.Char == ";" then
+            return true
+        end
+    end
+    return false
 end
 
 -- read, parse and print prefabs
@@ -139,24 +167,36 @@ end
 
 -- graphics
 function love.draw()
+    love.graphics.setCanvas(MapCanvas)
+    love.graphics.clear(0, 0, 0, 0) -- clear previous frame
+--    love.graphics.setColor(0, 0, 0, 0.95)
+
     -- calculate the camera offset
-    local windowWidth, windowHeight = love.graphics.getDimensions()
-    local offsetX = windowWidth / 2 - CharA:getX()
-    local offsetY = windowHeight / 2 - CharA:getY()
+--    local windowWidth, windowHeight = love.graphics.getDimensions()
+--    local offsetX = windowWidth / 2 - CharA:getX()
+--    local offsetY = windowHeight / 2 - CharA:getY()
     -- apply the camera translation
-    love.graphics.push()
-    love.graphics.translate(offsetX, offsetY)
+--    love.graphics.push()
+--    love.graphics.translate(offsetX, offsetY)
 
     -- draw the scene
     love.graphics.print("A", CharA:getX(), CharA:getY())
 
     -- draw Kramnik
-    KramnikSmall = love.graphics.newImage("kramnikSmall.jpg")
-    love.graphics.draw(KramnikSmall, Grid * 25, Grid * 15)
-    PrefabPrinter("wideRoom.lua", Grid*0, Grid*0)
+    --KramnikSmall = love.graphics.newImage("kramnikSmall.jpg")
+    --love.graphics.draw(KramnikSmall, Grid * 25, Grid * 15)
+
+    --draw current room
+    PrefabPrinter(CurrentRoom, Grid*7, Grid*7)
+
+    love.graphics.setCanvas() --for some reason included in the other canvases
+
+    love.graphics.draw(MapCanvas, 0, 0)
 
     -- reset the translation
-    love.graphics.pop()
+--    love.graphics.pop()
+
+    
 
     -- draw the UI box
     love.graphics.setCanvas(UICanvas)
@@ -216,6 +256,12 @@ function love.update()
             end
         end
         if love.keyboard.isDown("up") then
+            if MoveToNextRoom(CharA:getX(), CharA:getY() - Grid) == true then
+                RoomListCounter = 2
+                CharA:setX(Grid*12)
+                CharA:setY(Grid*20)
+                CurrentRoom = RoomList[RoomListCounter]
+            end
             if CanMoveTo(CharA:getX(), CharA:getY() - Grid) then
                 CharA:setY(CharA:getY() - Grid)
                 love.audio.play(StepSound)
@@ -238,6 +284,19 @@ function love.update()
                 CurrentDialogue = CurrentDialogueList[DialogueIndex]
                 DialogueTimeStamp = love.timer.getTime()
             end
+        end
+        -- test RoomList; currently uses DialogueTimeStamp because I'm lazy
+        if love.timer.getTime() > DialogueTimeStamp+DialogueDelay then
+            if love.keyboard.isDown("n") then do
+                CurrentRoom = RoomList[RoomListCounter]
+                RoomListCounter = RoomListCounter+1
+                if RoomListCounter == #RoomList then
+                    CurrentRoom = RoomList[1]
+                    RoomListCounter = 1
+                end
+            end
+            DialogueTimeStamp = love.timer.getTime()
+        end
         end
     end
 end
