@@ -2,6 +2,10 @@ if arg[2] == "debug" then
     require("lldebugger").start()
 end
 
+require "gamera"
+
+print("asd")
+
 -- set major variables
 Grid = 11
 MainWorld = love.physics.newWorld (0, 0, false)
@@ -21,23 +25,24 @@ MoveTimeStamp = love.timer.getTime()
 DialogueTimeStamp = love.timer.getTime()
 StepSound = love.audio.newSource("step.wav", "static")
 ScreenWidth, ScreenHeight = love.graphics.getWidth(), love.graphics.getHeight()
+
 -- UI stuff
 UIList = {}
-table.insert(UIList, "INSPECT")
-table.insert(UIList, "USE")
-table.insert(UIList, "TALK")
-table.insert(UIList, "TAKE")
-table.insert(UIList, "BREAK")
-table.insert(UIList, "LISTEN")
+table.insert(UIList, 1, "INSPECT") 
+table.insert(UIList, 2, "USE")
+table.insert(UIList, 3, "TALK")
+table.insert(UIList, 4, "TAKE")
+table.insert(UIList, 5, "BREAK")
+table.insert(UIList, 6, "LISTEN")
+CurrentAction = 1
 
--- create room playlist
+-- create room playlist; include room transitions in ;:=& order
 RoomList = {}
-table.insert(RoomList, "Aroom.lua")
-table.insert(RoomList, "Hallway1.lua")
-table.insert(RoomList, "HallwayZ.lua")
+table.insert(RoomList, 1, {"Aroom.lua", 2})
+table.insert(RoomList, 2, {"Hallway1.lua", 3, 1, 4})
+table.insert(RoomList, 3, {"HallwayZ.lua", 2})
 
-CurrentRoom = 1
-
+-- reset bumpmap, draw new room, place player
 function ChangeRoom (x, y, ax, ay)
     BumpMap = {}
     PrefabPrinter(CurrentRoom, Grid*x, Grid*y)
@@ -51,13 +56,11 @@ Hallway1:open("r")
 HallwayZ = love.filesystem.newFile("HallwayZ")
 HallwayZ:open("r")
 
---for i=0, #RoomList do
---    DialogueTree = love.filesystem.newFile("DialogueTree.lua")
---    DialogueTree:open("r")
---end
-
-CurrentRoom = RoomList[1]
-RoomListCounter = 1
+--remember to always also include the second [1] so it knows not to read the whole table at [1]
+CurrentRoom = RoomList[1][1]
+RoomIndex = 1
+-- might be obsolete
+RoomListIndex = 1
 
 -- dialogue stuff
 CurrentDialogue = "Nothing special to comment on in the environment."
@@ -78,34 +81,27 @@ end
 DialogueList = LineSplitter(DialogueTree)
 CurrentDialogueList = DialogueList
 
---for w in DialogueTree:gmatch("([^;]*)") do table.insert(DialogueList, w) end
---for i=0, #TbsLength do
-
 -- create map canvas
 MapCanvas = love.graphics.newCanvas(ScreenWidth*2/3, ScreenHeight*2/3)
-
 -- create dialogue canvas
 DialogueCanvas = love.graphics.newCanvas(ScreenWidth, ScreenHeight/3)
 -- create UI canvas
 UICanvas = love.graphics.newCanvas(ScreenWidth/3, ScreenHeight)
 
-    -- draw coordinates function
-    function CoDraw(x, y)
-        love.graphics.print({x,".",y}, Grid*x, Grid*y, 0, 0.5, 0.5)
-    end
-    -- specify coordinates to draw
-    for i = 0, 100 do
-        CoDraw (i, i)
-        CoDraw (i, 0)
-        CoDraw (0, i)
-    end
+-- draw coordinates function
+function CoDraw(x, y)
+    love.graphics.print({x,".",y}, Grid*x, Grid*y, 0, 0.5, 0.5)
+end
+-- specify coordinates to draw
+for i = 0, 100 do
+    CoDraw (i, i)
+    CoDraw (i, 0)
+    CoDraw (0, i)
+end
 
 -- detect if table contains specific XY coordinates; ChatGPT's code
 function ContainsXY(tbl, xValue, yValue)
     for _, obj in ipairs(tbl) do
-    --for i=0,1000 do
-        --if tbl.obj.X == xValue and tbl.obj.Y == yValue then
-        --if tbl[i].X == xValue and tbl[i].Y == yValue then
         if obj.X == xValue and obj.Y == yValue then
             return true
         end
@@ -125,11 +121,13 @@ end
 function MoveToNextRoom (x, y)
     for _, obj in ipairs(BumpMap) do
         if obj.X == x and obj.Y == y and obj.Char == ";" then
-            return true
+            return ";"
+        end
+        if obj.X == x and obj.Y == y and obj.Char == ":" then
+            return ":"
         end
     end
-    return false
-end
+end 
 
 -- read, parse and print prefabs
 function PrefabPrinter(p, x, y)    
@@ -207,8 +205,6 @@ function love.draw()
     -- reset the translation
 --    love.graphics.pop()
 
-    
-
     -- draw the UI box
     love.graphics.setCanvas(UICanvas)
     love.graphics.clear(0, 0, 0, 0) -- clear previous frame
@@ -228,7 +224,6 @@ function love.draw()
     -- draw the UI Canvas on the screen; sets the positioning, not size
     love.graphics.draw(UICanvas, ScreenWidth*0.7, 0)
 
-
     -- draw the dialogue canvas
     love.graphics.setCanvas(DialogueCanvas)
     love.graphics.clear(0, 0, 0, 0) -- clear previous frame
@@ -239,10 +234,8 @@ function love.draw()
     PrefabPrinter("borderD.lua", 0, DialogueCanvas:getHeight()-10)
     PrefabPrinter("borderDVert.lua", 0, 0)
     PrefabPrinter("borderDVert.lua", ScreenWidth-2*Grid, 0)
+    --maybe use PrefabPrinter instead somehow?
     love.graphics.print(CurrentDialogue, Grid*2, ScreenHeight*1/6)
-    -- prefabPrinter could be used to print dialogue, 
-    -- but needs to be somehow modified to only print the current line
-    --PrefabPrinter("DialogueTree.lua", ScreenWidth/3, ScreenHeight*1/6)  
     love.graphics.setCanvas()
     
     -- draw the dialogue canvas on the screen
@@ -267,11 +260,12 @@ function love.update()
             end
         end
         if love.keyboard.isDown("up") then
-            if MoveToNextRoom(CharA:getX(), CharA:getY() - Grid) == true then
-                RoomListCounter = RoomListCounter+1
+
+            if MoveToNextRoom(CharA:getX(), CharA:getY() - Grid) == ";" then
+                RoomListIndex = RoomList[RoomListIndex][2]
                 CharA:setX(Grid*12)
                 CharA:setY(Grid*20)
-                CurrentRoom = RoomList[RoomListCounter]
+                CurrentRoom = RoomList[RoomListIndex][1]
                 ChangeRoom(7, 7, 15, 15)
             end
             if CanMoveTo(CharA:getX(), CharA:getY() - Grid) then
@@ -281,6 +275,14 @@ function love.update()
             end
         end
         if love.keyboard.isDown("down") then
+            if MoveToNextRoom(CharA:getX(), CharA:getY() + Grid) == ":" then
+                RoomListIndex = RoomList[RoomListIndex][3]
+                CharA:setX(Grid*12)
+                CharA:setY(Grid*20)
+                CurrentRoom = RoomList[RoomListIndex][1]
+                ChangeRoom(7, 7, 15, 15)
+                print("Great success")
+            end
             if CanMoveTo(CharA:getX(), CharA:getY() + Grid) then
                 CharA:setY(CharA:getY() + Grid)
                 love.audio.play(StepSound)
@@ -300,12 +302,12 @@ function love.update()
         -- test RoomList; currently uses DialogueTimeStamp because I'm lazy
         if love.timer.getTime() > DialogueTimeStamp+DialogueDelay then
             if love.keyboard.isDown("n") then do
-                if RoomListCounter == #RoomList+1 then
-                    CurrentRoom = RoomList[1]
-                    RoomListCounter = 1
+                if RoomListIndex == #RoomList+1 then
+                    CurrentRoom = RoomList[1][1]
+                    RoomListIndex = 1
                 end
-                CurrentRoom = RoomList[RoomListCounter]
-                RoomListCounter = RoomListCounter+1
+                CurrentRoom = RoomList[RoomListIndex]
+                RoomListIndex = RoomListIndex+1
                 ChangeRoom(7, 7, 15, 15)
             end
             DialogueTimeStamp = love.timer.getTime()
